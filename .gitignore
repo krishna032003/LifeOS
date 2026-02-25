@@ -1,0 +1,22 @@
+# Global
+.DS_Store
+.env
+.env.*
+! .env.example
+
+# Python / Backend
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/.venv/
+backend/venv/
+backend/env/
+backend/*.log
+
+# Node / Frontend (frontend/.gitignore already exists but adding just in case)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/coverage/
+frontend/*.log
