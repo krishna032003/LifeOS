@@ -33,6 +33,8 @@ import asyncio
 import uuid
 from datetime import datetime, timezone
 from backend.models.user import UserProfileSchema, OnboardResponse
+from google.oauth2 import id_token
+from google.auth.transport import requests as grequests
 
 import urllib.parse
 from urllib.parse import quote_plus
@@ -57,6 +59,9 @@ if "@" in raw_uri and raw_uri.startswith("mongodb+srv://"):
 client = AsyncIOMotorClient(raw_uri, serverSelectionTimeoutMS=2000)
 db = client.get_database("lifeos")
 
+class GoogleAuthRequest(BaseModel):
+    token: str
+
 
 class UserProfile(BaseModel):
     user_id: str
@@ -67,6 +72,53 @@ class UserProfile(BaseModel):
     active_goals: list[str]
 
 MOCK_DB = {}
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+
+
+@app.post("/auth/google")
+async def google_login(data: GoogleAuthRequest):
+    try:
+        # Verify token with Google
+        idinfo = id_token.verify_oauth2_token(
+            data.token,
+            grequests.Request(),
+            GOOGLE_CLIENT_ID
+        )
+
+        email = idinfo["email"]
+        name = idinfo.get("name", "")
+        picture = idinfo.get("picture", "")
+
+        # Check if user exists
+        user = await db.users.find_one({"email": email})
+
+        if not user:
+            user_id = str(uuid.uuid4())
+
+            new_user = {
+                "user_id": user_id,
+                "email": email,
+                "name": name,
+                "picture": picture,
+                "goals": [],
+                "created_at": datetime.now(timezone.utc)
+            }
+
+            await db.users.insert_one(new_user)
+
+        else:
+            user_id = user["user_id"]
+
+        return {
+            "success": True,
+            "user_id": user_id,
+            "email": email,
+            "name": name
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/api/user/{user_id}")
 async def get_user(user_id: str):
