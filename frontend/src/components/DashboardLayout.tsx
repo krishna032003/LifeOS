@@ -20,7 +20,7 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ sidebarContent, centralArea, logs }: DashboardLayoutProps) {
     return (
-        <div className="min-h-screen bg-opal-base text-white p-6 pb-20 sm:p-12 font-[family-name:var(--font-geist-sans)] selection:bg-mint/30">
+        <div className="min-h-screen bg-transparent text-white p-6 pb-20 sm:p-12 font-[family-name:var(--font-geist-sans)] selection:bg-mint/30">
 
             {/* Header */}
             <header className="flex justify-between items-center mb-12">

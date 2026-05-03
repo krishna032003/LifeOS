@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv(override=True)
 
 
 app = FastAPI(title="LifeOS Agent Backend")
@@ -76,6 +76,7 @@ class ClassroomTokenRequest(BaseModel):
 class FocusStartRequest(BaseModel):
     duration_minutes: int
     blocked_apps: list[str]
+    user_id: str | None = None
 
 
 class UserProfile(BaseModel):
@@ -381,17 +382,51 @@ async def get_classroom_courses(user_id: str):
             
         data = res.json()
         courses = data.get("courses", [])
-        return {"success": True, "courses": courses}
+        
+        assignments = []
+        async def fetch_coursework(course):
+            course_id = course["id"]
+            cw_res = await client.get(
+                f"https://classroom.googleapis.com/v1/courses/{course_id}/courseWork",
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            if cw_res.status_code == 200:
+                cw_data = cw_res.json()
+                for work in cw_data.get("courseWork", []):
+                    if "dueDate" in work:
+                        work["courseName"] = course["name"]
+                        assignments.append(work)
+                        
+        if courses:
+            await asyncio.gather(*[fetch_coursework(c) for c in courses])
+        
+        def get_due_date(w):
+            d = w.get("dueDate", {})
+            t = w.get("dueTime", {})
+            try:
+                return datetime(
+                    d.get("year", 2099), d.get("month", 1), d.get("day", 1),
+                    t.get("hours", 23), t.get("minutes", 59), tzinfo=timezone.utc
+                )
+            except:
+                return datetime(2099, 1, 1, tzinfo=timezone.utc)
+                
+        assignments.sort(key=get_due_date)
+        now = datetime.now(timezone.utc)
+        upcoming_assignments = [a for a in assignments if get_due_date(a) > now]
+
+        return {"success": True, "courses": courses, "assignments": upcoming_assignments}
 
 # --- Focus Mode App Blocker ---
 active_focus_task: asyncio.Task = None
 focus_end_time: datetime = None
+focus_start_time: datetime = None
+active_focus_user: str = None
 
 async def focus_blocker_loop(end_time: datetime, blocked_apps: list[str]):
     try:
         while datetime.now(timezone.utc) < end_time:
             try:
-                # osascript is slower, let's just use it
                 script = 'tell application "System Events" to get name of every application process whose background only is false'
                 proc = await asyncio.create_subprocess_exec(
                     "osascript", "-e", script,
@@ -415,28 +450,52 @@ async def focus_blocker_loop(end_time: datetime, blocked_apps: list[str]):
     except asyncio.CancelledError:
         print("[Focus] Session cancelled early.")
     finally:
-        global active_focus_task, focus_end_time
+        global active_focus_task, focus_end_time, focus_start_time, active_focus_user
+        if focus_start_time and active_focus_user:
+            elapsed_seconds = (datetime.now(timezone.utc) - focus_start_time).total_seconds()
+            elapsed_minutes = max(0, int(elapsed_seconds / 60))
+            if elapsed_minutes > 0:
+                user_id = active_focus_user
+                try:
+                    user = await db.users.find_one({"user_id": user_id})
+                    if user:
+                        await db.users.update_one(
+                            {"user_id": user_id},
+                            {"$inc": {"total_focus_minutes": elapsed_minutes}}
+                        )
+                    elif user_id in MOCK_DB:
+                        current = MOCK_DB[user_id].get("total_focus_minutes", 0)
+                        MOCK_DB[user_id]["total_focus_minutes"] = current + elapsed_minutes
+                except Exception as e:
+                    if user_id in MOCK_DB:
+                        current = MOCK_DB[user_id].get("total_focus_minutes", 0)
+                        MOCK_DB[user_id]["total_focus_minutes"] = current + elapsed_minutes
+                        
         active_focus_task = None
         focus_end_time = None
+        focus_start_time = None
+        active_focus_user = None
         print("[Focus] Session ended.")
 
 @app.post("/api/focus/start")
 async def start_focus(req: FocusStartRequest):
-    global active_focus_task, focus_end_time
+    global active_focus_task, focus_end_time, focus_start_time, active_focus_user
     if active_focus_task:
         active_focus_task.cancel()
     
-    focus_end_time = datetime.now(timezone.utc) + timedelta(minutes=req.duration_minutes)
+    now = datetime.now(timezone.utc)
+    focus_start_time = now
+    focus_end_time = now + timedelta(minutes=req.duration_minutes)
+    active_focus_user = req.user_id
+    
     active_focus_task = asyncio.create_task(focus_blocker_loop(focus_end_time, req.blocked_apps))
     return {"success": True, "end_time": focus_end_time.isoformat()}
 
 @app.post("/api/focus/stop")
 async def stop_focus():
-    global active_focus_task, focus_end_time
+    global active_focus_task
     if active_focus_task:
         active_focus_task.cancel()
-        active_focus_task = None
-        focus_end_time = None
     return {"success": True}
 
 @app.get("/api/focus/status")
