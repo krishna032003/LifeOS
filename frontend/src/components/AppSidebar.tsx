@@ -29,29 +29,32 @@ export default function AppSidebar({
   const focusLabel = focusProgress > 70 ? "Excellent" : focusProgress > 35 ? "Good" : "Building…";
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "rgba(255,255,255,0.032)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderRight: "1px solid rgba(255,255,255,0.07)" }}>
+    <div className="flex flex-col h-full" style={{ background: "linear-gradient(180deg, rgba(10,20,18,0.85) 0%, rgba(6,7,10,0.8) 100%)", backdropFilter: "blur(32px)", WebkitBackdropFilter: "blur(32px)", borderRight: "1px solid rgba(255,255,255,0.09)", boxShadow: "inset -1px 0 0 rgba(255,255,255,0.04)" }}>
 
       {/* ── Greeting header ── */}
-      <div style={{ padding: '20px 20px 16px', borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-        <p style={{ fontFamily: "'Instrument Serif', serif", fontSize: 22, color: 'rgba(255,255,255,0.9)', lineHeight: 1.2, marginBottom: 4 }}>{timeLabel}</p>
+      <div style={{ padding: '20px 20px 16px', borderBottom: "1px solid rgba(255,255,255,0.07)", background: "rgba(52,211,153,0.02)" }}>
+        <p style={{ fontFamily: "'Instrument Serif', serif", fontSize: 24, color: 'rgba(255,255,255,0.9)', lineHeight: 1.2, marginBottom: 4, letterSpacing: '-0.3px', textShadow: '0 0 30px rgba(52,211,153,0.15)' }}>{timeLabel}</p>
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.32)', fontWeight: 300, letterSpacing: '0.03em' }}>{dateStr}</p>
       </div>
 
       {/* ── Nav section ── */}
       <div className="px-3">
-        <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.22)', padding: '0 6px', marginBottom: 8, marginTop: 14 }}>Workspace</p>
+        <div className="flex items-center gap-3 mb-3 px-1 mt-4">
+          <span style={{ fontSize: 10, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.4)' }} className="uppercase font-semibold">Workspace</span>
+          <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, rgba(255,255,255,0.1), transparent)' }} />
+        </div>
         {NAV.map(n => {
           const Icon = n.icon;
           const active = activeNav === n.key;
           return (
             <button key={n.key} onClick={() => onNav(n.key)}
-              style={{ padding: '9px 10px', borderRadius: 12, marginBottom: 3, background: active ? 'rgba(255,255,255,0.09)' : 'transparent' }}
+              style={{ padding: '9px 10px', borderRadius: 12, marginBottom: 3, background: active ? 'linear-gradient(90deg, rgba(52,211,153,0.15) 0%, rgba(52,211,153,0.06) 100%)' : 'transparent', boxShadow: active ? 'inset 0 0 0 1px rgba(52,211,153,0.2), 0 0 20px rgba(52,211,153,0.08)' : 'none' }}
               className={`w-full flex items-center gap-2.5 cursor-pointer transition-all relative group ${active ? "" : "hover:bg-white/[0.04]"}`}
             >
               {active && (
-                <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 20, borderRadius: '0 3px 3px 0', background: 'linear-gradient(180deg, #34d399, #0ea5e9)' }} />
+                <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 20, borderRadius: '0 3px 3px 0', background: 'linear-gradient(180deg, var(--accent-mint), var(--accent-cyan))', boxShadow: '0 0 8px rgba(52,211,153,0.7)' }} />
               )}
-              <div className={`w-[26px] h-[26px] rounded-lg flex items-center justify-center ${active ? "bg-white/[0.09]" : "bg-white/[0.04]"}`}>
+              <div className={`w-[26px] h-[26px] rounded-lg flex items-center justify-center transition-transform duration-150 ${active ? "bg-emerald-400/[0.15]" : "bg-white/[0.04] group-hover:translate-x-[3px]"}`}>
                 <Icon size={16} className={active ? "text-emerald-400" : "text-white/30"} />
               </div>
               <span style={{ fontSize: 15, fontWeight: active ? 500 : 400, color: active ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.42)' }} className={`flex-1 text-left ${active ? "" : "group-hover:text-white/75"}`}>{n.label}</span>
@@ -65,8 +68,11 @@ export default function AppSidebar({
 
       {/* ── Deadlines ── */}
       <div className="px-3 pb-3">
-        <div className="flex items-center justify-between">
-          <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.22)', padding: '0 6px', marginBottom: 8, marginTop: 14 }}>Deadlines</p>
+        <div className="flex items-center justify-between mb-3 px-1 mt-4">
+          <div className="flex items-center gap-3 flex-1">
+            <span style={{ fontSize: 10, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.4)' }} className="uppercase font-semibold">Deadlines</span>
+            <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, rgba(255,255,255,0.1), transparent)' }} />
+          </div>
           <button onClick={onSyncClassroom} disabled={isClassroomLoading}
             className="text-[12px] text-white/22 hover:text-emerald-400 disabled:opacity-40 transition-colors">
             {isClassroomLoading ? "Syncing…" : classroomData.length > 0 ? "↻" : ""}
@@ -80,8 +86,8 @@ export default function AppSidebar({
             </div>
             <p className="text-[11px] text-white/30 font-light leading-relaxed mb-1">Connect Classroom<br/>to see deadlines</p>
             <button onClick={onSyncClassroom} disabled={isClassroomLoading}
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.55)", fontSize: 12, padding: '7px 16px', borderRadius: 20 }}
-              className="hover:text-white/80 transition-all cursor-pointer">
+              style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.25)", color: "rgba(52,211,153,0.75)", fontSize: 12, padding: '7px 16px', borderRadius: 20, boxShadow: '0 0 12px rgba(52,211,153,0.1)' }}
+              className="btn-connect-shimmer hover:text-emerald-400/80 transition-all duration-300 cursor-pointer hover:border-emerald-400/30">
               {isClassroomLoading ? "Connecting…" : "+ Connect"}
             </button>
           </div>
@@ -113,7 +119,10 @@ export default function AppSidebar({
 
       {/* ── Bottom stats ── */}
       <div className="mt-auto px-4 pb-4 pt-3">
-        <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.22)', padding: '0 6px', marginBottom: 8, marginTop: 14 }}>Performance</p>
+        <div className="flex items-center gap-3 mb-3 px-1 mt-2">
+          <span style={{ fontSize: 10, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.4)' }} className="uppercase font-semibold">Performance</span>
+          <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, rgba(255,255,255,0.1), transparent)' }} />
+        </div>
         
         {/* Focus Score */}
         <div className="px-2 mb-4">
@@ -127,15 +136,14 @@ export default function AppSidebar({
               <span className="text-[10px] text-white/30">%</span>
             </div>
           </div>
-          <div style={{ height: 4, background: 'rgba(255,255,255,0.08)' }} className="rounded-full overflow-hidden mb-1.5">
-            <div className="h-full rounded-full transition-all duration-700 ease-out"
-              style={{ width: `${focusProgress}%`, background: "linear-gradient(90deg, #34d399, #0ea5e9)" }} />
-          </div>
-          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>{focusLabel}</p>
+            <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ width: `${focusProgress}%`, background: "linear-gradient(90deg, #34d399, #06b6d4)", boxShadow: "0 0 6px rgba(52,211,153,0.4)", borderRadius: 10, transition: "width 1s ease-out" }} className="h-full" />
+            </div>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 6, textAlign: 'right' }}>{focusLabel}</p>
         </div>
 
         {/* Deep Work card */}
-        <div style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: '11px 14px' }} className="flex items-center gap-3">
+        <div style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: '11px 14px', boxShadow: "0 2px 12px rgba(0,0,0,0.2)" }} className="flex items-center gap-3">
           <span className={`w-2 h-2 rounded-full shrink-0 ${isFocusActive ? "bg-emerald-400 animate-pulse" : "bg-white/20"}`} />
           <div className="flex-1 min-w-0">
             <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>Deep Work Logged</p>

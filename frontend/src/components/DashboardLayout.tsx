@@ -20,13 +20,13 @@ interface DashboardLayoutProps {
 const MAX_LEN = 110;
 
 const AGENT_META: Record<string, { label: string; dot: string; text: string; bg: string }> = {
-  System:      { label: "System",      dot: "bg-sky-400",     text: "text-sky-400",     bg: "bg-sky-400/8" },
+  System:      { label: "System",      dot: "bg-cyan-400",     text: "text-cyan-400",     bg: "bg-cyan-400/8" },
   Planner:     { label: "Planner",     dot: "bg-violet-400",  text: "text-violet-400",  bg: "bg-violet-400/8" },
   Study:       { label: "Study",       dot: "bg-emerald-400", text: "text-emerald-400", bg: "bg-emerald-400/8" },
   Productivity:{ label: "Scheduler",   dot: "bg-amber-400",   text: "text-amber-400",   bg: "bg-amber-400/8" },
-  Memory:      { label: "Memory",      dot: "bg-cyan-400",    text: "text-cyan-400",    bg: "bg-cyan-400/8" },
-  Reflection:  { label: "Reflection",  dot: "bg-pink-400",    text: "text-pink-400",    bg: "bg-pink-400/8" },
-  User:        { label: "You",         dot: "bg-white/40",    text: "text-white/50",    bg: "bg-white/4" },
+  Memory:      { label: "Memory",      dot: "bg-indigo-400",  text: "text-indigo-400",  bg: "bg-indigo-400/8" },
+  Reflection:  { label: "Reflection",  dot: "bg-violet-400",  text: "text-violet-400",  bg: "bg-violet-400/8" },
+  User:        { label: "You",         dot: "bg-white",       text: "text-white/90",    bg: "bg-white/4" },
   System_Error:{ label: "Error",       dot: "bg-red-400",     text: "text-red-400",     bg: "bg-red-400/8" },
 };
 
@@ -38,8 +38,8 @@ function PipelineRow({ log, isLast }: { log: LogEntry; isLast: boolean }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.2 }}
+      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
       className="flex gap-2 mb-3"
     >
       {/* Timeline */}
@@ -49,13 +49,13 @@ function PipelineRow({ log, isLast }: { log: LogEntry; isLast: boolean }) {
       </div>
 
       {/* Bubble */}
-      <div className="flex-1 min-w-0 px-2.5 py-2" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10 }}>
+      <div className="flex-1 min-w-0 px-2.5 py-2" style={{ background: "rgba(255,255,255,0.055)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 10, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" }}>
         <div className="flex items-center gap-1.5 mb-0.5">
           <span style={{ fontSize: 11, fontWeight: 700 }} className={`uppercase tracking-[0.07em] ${meta.text}`}>{meta.label}</span>
-          {log.isFinal && <span className="text-[8px] px-1 py-px rounded bg-emerald-400/15 text-emerald-400 font-semibold">✓</span>}
+          {log.isFinal && <span className="text-[8px] px-1 py-px rounded bg-emerald-400/15 text-emerald-400 font-semibold glow-pulse">✓</span>}
           <span className="ml-auto text-white/18 tabular-nums shrink-0" style={{ fontSize: 10 }}>{log.timestamp}</span>
         </div>
-        <p className="font-light leading-relaxed break-words" style={{ fontSize: 12, color: "rgba(255,255,255,0.52)" }}>{msg}</p>
+        <p className="font-light leading-relaxed break-words font-mono" style={{ fontSize: 11, color: "rgba(255,255,255,0.52)" }}>{msg}</p>
         {long && (
           <button onClick={() => setOpen(!open)} className="mt-0.5 flex items-center gap-0.5 text-[8px] text-white/20 hover:text-white/50 transition-colors">
             {open ? <ChevronDown size={8} /> : <ChevronRight size={8} />}
@@ -85,7 +85,7 @@ export default function DashboardLayout({ sidebarContent, centralArea, logs, pip
     <div className="h-screen w-screen overflow-hidden flex flex-col" style={{ fontFamily: "var(--font-body)", background: "transparent" }}>
 
       {/* ── Topbar ── */}
-      <header className="h-[56px] flex-shrink-0 flex items-center justify-between px-8 z-20 relative" style={{ background: "rgba(255,255,255,0.032)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+      <header className="h-[56px] flex-shrink-0 flex items-center justify-between px-8 z-20 relative" style={{ background: "rgba(6,7,10,0.75)", backdropFilter: "blur(32px)", WebkitBackdropFilter: "blur(32px)", borderBottom: "1px solid rgba(255,255,255,0.09)", boxShadow: "0 1px 0 rgba(255,255,255,0.06), 0 4px 24px rgba(0,0,0,0.4)" }}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
@@ -94,7 +94,7 @@ export default function DashboardLayout({ sidebarContent, centralArea, logs, pip
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 12, fontWeight: 800, color: '#000'
           }}>L</div>
-          <span style={{ fontFamily: "'Instrument Serif', serif", fontSize: 22, letterSpacing: '-0.4px', color: 'rgba(255,255,255,0.92)' }}>
+          <span style={{ fontFamily: "'Instrument Serif', serif", fontSize: 22, letterSpacing: '-0.4px', color: 'rgba(255,255,255,0.92)', textShadow: '0 0 20px rgba(52,211,153,0.2)' }}>
             LifeOS
           </span>
           <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.22)', marginLeft: 2 }} className="hidden sm:block">
@@ -104,11 +104,12 @@ export default function DashboardLayout({ sidebarContent, centralArea, logs, pip
 
         {/* Right */}
         <div className="flex items-center gap-4 relative z-10">
-          <span className="text-[13px] text-white/30 tabular-nums">
+          <span className="text-[12px] text-white/35 tabular-nums tracking-wide uppercase font-light">
             {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
           </span>
           <ProfileMenu />
         </div>
+        <div className="topbar-glow" />
       </header>
 
       {/* ── 3-column body ── */}
@@ -125,11 +126,11 @@ export default function DashboardLayout({ sidebarContent, centralArea, logs, pip
         </main>
 
         {/* Right — Agent Pipeline */}
-        <aside className="w-[230px] flex-shrink-0 flex flex-col overflow-hidden anim-5" style={{ background: "rgba(255,255,255,0.028)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderLeft: "1px solid rgba(255,255,255,0.07)" }}>
+        <aside className="w-[230px] flex-shrink-0 flex flex-col overflow-hidden anim-5" style={{ background: "rgba(6,7,10,0.7)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)", borderLeft: "1px solid rgba(52,211,153,0.12)", boxShadow: "inset 1px 0 0 rgba(52,211,153,0.06), -4px 0 32px rgba(0,0,0,0.3)" }}>
 
           {/* Pipeline header */}
           <div className="h-[40px] flex-shrink-0 flex items-center justify-between px-[14px]" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.28)' }}>AGENT TRACE</span>
+            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.35)', textShadow: '0 0 12px rgba(52,211,153,0.2)' }}>AGENT TRACE</span>
             <div className="flex items-center gap-1.5">
               <div className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
               <span style={{ fontSize: 11 }} className={`${st.text} flex items-center gap-1`}>
@@ -141,10 +142,10 @@ export default function DashboardLayout({ sidebarContent, centralArea, logs, pip
           {/* Idle empty */}
           {logs.length <= 1 && pipelineStatus === "idle" && (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 px-5 text-center select-none">
-              <div className="w-8 h-8 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(52,211,153,0.07)", border: "1px solid rgba(52,211,153,0.18)", boxShadow: "0 0 24px rgba(52,211,153,0.15)" }}>
                 <Cpu size={14} className="text-white/20" />
               </div>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.28)' }} className="text-center font-light leading-relaxed">
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.32)', lineHeight: 1.7 }} className="text-center font-light leading-relaxed">
                 Agent logs stream here when you run a command or send a message.
               </p>
             </div>
@@ -163,8 +164,8 @@ export default function DashboardLayout({ sidebarContent, centralArea, logs, pip
           )}
 
           {/* Footer count */}
-          <div className="h-8 flex-shrink-0 flex items-center px-3.5 gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.22)' }} className="tabular-nums">{logs.length} event{logs.length !== 1 ? "s" : ""}</span>
+          <div className="h-8 flex-shrink-0 flex items-center px-3.5 gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.07)", background: "rgba(6,7,10,0.6)", boxShadow: "0 -1px 0 rgba(255,255,255,0.06)" }}>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }} className="tabular-nums">{logs.length} event{logs.length !== 1 ? "s" : ""}</span>
           </div>
         </aside>
       </div>

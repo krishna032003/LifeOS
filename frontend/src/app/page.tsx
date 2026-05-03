@@ -104,7 +104,7 @@ export default function Home() {
     if (commandType === "weekly_review") { setIsReviewOpen(true); setIsReviewLoading(true); setReviewData(null); }
 
     try {
-      addLog("System", "Connecting to Agent Swarm…");
+      addLog("System", "Connecting to Agent Swarm...");
       const uid = userId ?? localStorage.getItem("lifeos_user_id") ?? "guest";
       await streamAgentChat(uid, label, commandType, {
         onPipelineLog: (node, message) => { setPipelineStatus("streaming"); addLog(node, message); },
@@ -155,7 +155,6 @@ export default function Home() {
         onStateUpdate: (focus) => { if (focus > 0) setFocusProgress(focus); },
         onFinalResponse: (message) => {
           setChatHistory(prev => prev.map(m => m.id === aiId ? { ...m, text: message } : m));
-          setFinalAnswer(message);
           addLog("Reflection", "Final response ready.", true);
           setPipelineStatus("done");
         },
@@ -229,7 +228,7 @@ export default function Home() {
     if (isThinking) return;
     setIsClassroomLoading(true);
     setClassroomData([]); setAssignmentsData([]);
-    addLog("System", "Fetching Classroom data…");
+    addLog("System", "Fetching Classroom data...");
     try {
       const uid = userId ?? localStorage.getItem("lifeos_user_id") ?? "guest";
       const fetchCourses = async () => { const r = await fetch(`${API_BASE}/api/classroom/${encodeURIComponent(uid)}`); if (!r.ok) { const e = await r.json().catch(() => ({})); throw { status: r.status, message: e.detail ?? "Failed" }; } return r.json(); };
@@ -238,7 +237,7 @@ export default function Home() {
       catch (err: unknown) {
         const e = err as { status?: number; message?: string };
         if ((e.status === 400 && e.message?.includes("access token")) || e.status === 401) {
-          addLog("System", "Opening Classroom auth popup…");
+          addLog("System", "Opening Classroom auth popup...");
           const token = await openClassroomAuthPopup();
           await fetch(`${API_BASE}/api/classroom/${encodeURIComponent(uid)}/token`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ access_token: token }) });
           data = await fetchCourses();

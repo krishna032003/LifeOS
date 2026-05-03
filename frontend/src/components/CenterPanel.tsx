@@ -38,20 +38,20 @@ const MD = {
 
 /* ─── Command chips ─── */
 const CMDS = [
-  { label: "Timetable",     icon: Clock,     action: "timetable" },
-  { label: "Auto-Schedule", icon: Calendar,  action: "auto_schedule" },
-  { label: "Study RAG",     icon: Brain,     action: "materials" },
-  { label: "Weekly Review", icon: BarChart2, action: "weekly_review" },
-  { label: "Study Topics",  icon: BookOpen,  action: "study_today" },
-  { label: "Deep Work",     icon: Zap,       action: "focus" },
+  { label: "Timetable",     icon: Clock,     action: "timetable", accent: "var(--accent-amber)" },
+  { label: "Auto-Schedule", icon: Calendar,  action: "auto_schedule", accent: "var(--accent-cyan)" },
+  { label: "Study RAG",     icon: Brain,     action: "materials", accent: "var(--accent-violet)" },
+  { label: "Weekly Review", icon: BarChart2, action: "weekly_review", accent: "var(--accent-rose)" },
+  { label: "Study Topics",  icon: BookOpen,  action: "study_today", accent: "var(--accent-mint)" },
+  { label: "Deep Work",     icon: Zap,       action: "focus", accent: "var(--accent-amber)" },
 ];
 
 /* ─── Quick action cards for empty state ─── */
 const CARDS = [
-  { label: "Plan My Day",       desc: "Auto-schedule tasks & classes",  icon: Calendar, action: "auto_schedule",cmd: "Auto-Schedule My Day" },
-  { label: "What to Study",     desc: "AI picks the best topic now",    icon: BookOpen, action: "study_today",  cmd: "What Should I Study Today" },
-  { label: "Smart Timetable",   desc: "Build a weekly AI schedule",     icon: Clock,    action: "timetable",    cmd: "" },
-  { label: "Study RAG",         desc: "Ask questions about your notes", icon: Brain,    action: "materials",    cmd: "" },
+  { label: "Plan My Day",       desc: "Auto-schedule tasks & classes",  icon: Calendar, action: "auto_schedule",cmd: "Auto-Schedule My Day", accent: "var(--accent-cyan)" },
+  { label: "What to Study",     desc: "AI picks the best topic now",    icon: BookOpen, action: "study_today",  cmd: "What Should I Study Today", accent: "var(--accent-violet)" },
+  { label: "Smart Timetable",   desc: "Build a weekly AI schedule",     icon: Clock,    action: "timetable",    cmd: "", accent: "var(--accent-amber)" },
+  { label: "Study RAG",         desc: "Ask questions about your notes", icon: Brain,    action: "materials",    cmd: "", accent: "var(--accent-mint)" },
 ];
 
 /* ─── Empty workspace ─── */
@@ -70,22 +70,22 @@ function EmptyWorkspace({ onAction, onOpenTimetable, onOpenMaterials, onOpenFocu
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-[18px] pb-4 scrollbar-hidden">
+    <div className="flex-1 overflow-y-auto px-[18px] pt-4 pb-2 styled-scrollbar flex flex-col gap-4">
       
       {/* Hero text strip */}
       <div style={{ textAlign: 'center', padding: '28px 24px 20px' }}>
         <p style={{ 
           fontFamily: "'Instrument Serif', serif",
-          fontSize: 38, fontWeight: 400, 
+          fontSize: 'clamp(42px, 5vw, 56px)', fontWeight: 400, 
           color: 'rgba(255,255,255,0.88)',
           lineHeight: 1.05, letterSpacing: '-1px',
           marginBottom: 8
         }}>
           Your mind,{' '}
-          <em style={{ fontStyle: 'normal', color: 'rgba(255,255,255,0.28)' }}>finally</em>
+          <em className="hero-finally" style={{ fontStyle: 'italic', paddingRight: 4 }}>finally</em>
           {' '}in order.
         </p>
-        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.32)', fontWeight: 300, lineHeight: 1.7, maxWidth: 380, margin: '0 auto' }}>
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', fontWeight: 300, lineHeight: 1.7, maxWidth: 380, margin: '0 auto' }}>
           One OS for your study, schedule, focus, and reflection.
         </p>
       </div>
@@ -93,13 +93,18 @@ function EmptyWorkspace({ onAction, onOpenTimetable, onOpenMaterials, onOpenFocu
       {/* Metrics row */}
       <div className="grid grid-cols-3 gap-2.5 mb-5">
         {[
-          { label: "Next Deadline", value: next?.title ?? "None", sub: next?.courseName ?? "Sync Classroom", color: "rgba(251,191,36,0.7)" },
-          { label: "Focus Logged", value: `${totalFocusMinutes}m`, sub: "deep work total", color: "rgba(52,211,153,0.7)" },
-          { label: "AI Status", value: "Ready", sub: "Gemini 2.5 connected", color: "rgba(96,165,250,0.7)" },
+          { label: "Next Deadline", value: next?.title ?? "None", sub: next?.courseName ?? "Sync Classroom", color: "var(--accent-amber)" },
+          { label: "Focus Logged", value: `${totalFocusMinutes}m`, sub: "deep work total", color: "var(--accent-cyan)" },
+          { label: "AI Status", value: "Ready", sub: "Gemini 2.5 connected", color: "var(--accent-mint)" },
         ].map(s => (
-          <div key={s.label} style={{ background: "rgba(255,255,255,0.038)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 14, padding: '14px 18px', border: "1px solid rgba(255,255,255,0.08)" }}>
-            <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: s.color, marginBottom: 6 }}>{s.label}</p>
-            <p style={{ fontFamily: "'Instrument Serif', serif", fontSize: 20, color: 'rgba(255,255,255,0.88)', marginBottom: 2 }} className="truncate">{s.value}</p>
+          <div key={s.label} className="card-shimmer stat-card cursor-pointer group relative overflow-hidden" style={{ background: "rgba(255,255,255,0.045)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 14, padding: '14px 18px', border: "1px solid rgba(255,255,255,0.13)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 32px rgba(0,0,0,0.4)" }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: s.color }} />
+            <div style={{ position: 'absolute', top: -50, left: -30, width: 140, height: 140, background: `radial-gradient(circle, ${s.color} 0%, transparent 70%)`, opacity: 0.15, pointerEvents: 'none' }} />
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: s.color, marginBottom: 6 }} className="flex items-center gap-1.5">
+               {s.label}
+               {s.label === "AI Status" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 glow-pulse" />}
+            </p>
+            <p style={{ fontFamily: "'Instrument Serif', serif", fontSize: 32, fontWeight: 300, color: 'rgba(255,255,255,0.88)', marginBottom: 2 }} className="truncate">{s.value}</p>
             <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontWeight: 300 }} className="truncate">{s.sub}</p>
           </div>
         ))}
@@ -114,13 +119,18 @@ function EmptyWorkspace({ onAction, onOpenTimetable, onOpenMaterials, onOpenFocu
           const Icon = c.icon;
           return (
             <button key={c.label} onClick={() => handleCard(c)}
-              style={{ background: "rgba(255,255,255,0.038)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: '18px 20px', cursor: 'pointer', transition: 'all 0.2s' }}
-              className="flex items-start gap-3 text-left group hover:bg-white/[0.06] hover:-translate-y-[2px]">
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.07)' }} className="flex items-center justify-center shrink-0">
-                <Icon size={18} className="text-white/40 group-hover:text-white/70 transition-colors" />
+              style={{ background: "rgba(255,255,255,0.038)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.12)", borderLeft: `3px solid ${c.accent}`, borderRadius: 16, padding: '18px 20px', cursor: 'pointer', boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1), 0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04)" }}
+              className="quick-action-btn flex items-start gap-3 text-left group hover:bg-white/[0.06] card-shimmer relative overflow-hidden"
+            >
+              <div className="quick-action-wash" style={{ '--wash-color': c.accent } as any} />
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.05)' }} className="quick-action-icon flex items-center justify-center shrink-0 transition-transform duration-200">
+                <Icon size={18} style={{ color: c.accent }} />
               </div>
-              <div>
-                <p style={{ fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.85)', marginBottom: 4 }}>{c.label}</p>
+              <div className="relative z-10">
+                <p style={{ fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.9)', marginBottom: 4, letterSpacing: '-0.2px' }}>
+                  {c.label}
+                  <span className="quick-action-arrow opacity-0 -translate-x-2 transition-all duration-200 inline-block ml-1">→</span>
+                </p>
                 <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.32)', fontWeight: 300, lineHeight: 1.5 }}>{c.desc}</p>
               </div>
             </button>
@@ -211,10 +221,10 @@ export default function CenterPanel({
       )}
 
       {/* ── Input zone ── */}
-      <div style={{ background: "rgba(255,255,255,0.032)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid rgba(255,255,255,0.08)", padding: '14px 18px 12px', flexShrink: 0 }}>
+      <div style={{ background: "rgba(6,7,10,0.75)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderTop: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 -1px 0 rgba(255,255,255,0.07), 0 -8px 32px rgba(0,0,0,0.3)", padding: '14px 18px 12px', flexShrink: 0 }}>
         {/* Text input */}
         <form onSubmit={onSubmit} className="flex items-end gap-2">
-          <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14 }} className="overflow-hidden flex-1 focus-within:ring-1 focus-within:ring-emerald-400/20 transition-all">
+          <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 14 }} className="overflow-hidden flex-1 border border-white/[0.12] focus-within:!border-cyan-400 focus-within:!shadow-[0_0_15px_rgba(34,211,238,0.4),0_4px_24px_rgba(0,0,0,0.4)] shadow-[0_2px_20px_rgba(0,0,0,0.3)] transition-all duration-200">
             <textarea
               value={chatInput}
               onChange={e => setChatInput(e.target.value)}
@@ -227,21 +237,23 @@ export default function CenterPanel({
             />
           </div>
           <button type="submit" disabled={isThinking || !chatInput.trim()}
-            style={{ background: 'linear-gradient(135deg, #1a9e70, #0369a1)', width: 44, height: 44, borderRadius: 12 }}
-            className="flex-shrink-0 flex items-center justify-center disabled:opacity-30 disabled:grayscale transition-all active:scale-95 hover:scale-[1.08] cursor-pointer">
+            style={{ background: 'linear-gradient(135deg, #34d399 0%, #0ea5e9 100%)', boxShadow: '0 0 24px rgba(52,211,153,0.6), 0 0 48px rgba(52,211,153,0.25), inset 0 1px 0 rgba(255,255,255,0.25)', width: 44, height: 44, borderRadius: 14 }}
+            className="flex-shrink-0 flex items-center justify-center disabled:opacity-30 disabled:grayscale transition-all active:scale-95 hover:scale-[1.08] hover:shadow-[0_0_28px_rgba(52,211,153,0.55)] cursor-pointer">
             {isThinking ? <Loader2 size={16} className="animate-spin text-white" /> : <Send size={15} className="text-white" />}
           </button>
         </form>
 
         {/* Command chips */}
-        <div className="flex gap-1.5 mt-3 flex-wrap">
-          {CMDS.map(c => {
+        <div className="flex items-center gap-2.5 mt-3 overflow-x-auto pb-1 scrollbar-hidden">
+          {CMDS.map((c, i) => {
             const Icon = c.icon;
             return (
               <button key={c.action} disabled={isThinking} onClick={() => handleChip(c.action)}
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 100, padding: '6px 14px', fontSize: 12, color: "rgba(255,255,255,0.42)", cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.18s', fontWeight: 400 }}
-                className="hover:text-white/85 hover:border-white/20 flex items-center gap-1.5 disabled:opacity-20 group">
-                <Icon size={11} className="opacity-50 group-hover:opacity-80 transition-opacity" />
+                className="group flex items-center gap-1.5 disabled:opacity-20 transition-all cursor-pointer overflow-hidden relative"
+                style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${c.accent}`, borderRadius: 100, padding: '6px 14px', fontSize: 12, color: "rgba(255,255,255,0.7)", whiteSpace: 'nowrap', fontWeight: 400, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" }}
+              >
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-15 transition-opacity duration-200 pointer-events-none" style={{ background: c.accent }} />
+                <Icon size={11} className="opacity-70 group-hover:opacity-100 transition-opacity" style={{ color: c.accent }} />
                 <span>{c.label}</span>
               </button>
             );
