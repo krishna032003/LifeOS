@@ -5,7 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   Send, Loader2, Calendar, Brain, BarChart2, BookOpen, Zap, Clock,
-  Sparkles, MessageSquare, ArrowRight, CornerDownRight,
+  Sparkles,
 } from "lucide-react";
 
 interface ChatMessage { id: string; role: "user" | "ai"; text: string; }
@@ -20,30 +20,38 @@ interface CenterPanelProps {
 
 /* ─── Markdown renderer ─── */
 const MD = {
-  h1:     ({...p}) => <h1     className="text-[13px] font-bold text-white mt-3 mb-1.5 pb-1 border-b border-white/8" {...p} />,
-  h2:     ({...p}) => <h2     className="text-[12px] font-semibold text-white/85 mt-3 mb-1" {...p} />,
-  h3:     ({...p}) => <h3     className="text-[11px] font-semibold text-white/75 mt-2 mb-0.5" {...p} />,
-  p:      ({...p}) => <p      className="text-[11px] text-white/50 leading-relaxed mb-2" {...p} />,
+  h1:     ({...p}) => <h1     style={{ fontFamily: "'Instrument Serif', serif", fontSize: 20, color: 'rgba(255,255,255,0.9)' }} className="mt-3 mb-1.5 pb-1 border-b border-white/[0.07]" {...p} />,
+  h2:     ({...p}) => <h2     style={{ fontFamily: "'Instrument Serif', serif", fontSize: 17, color: 'rgba(255,255,255,0.8)' }} className="mt-3 mb-1" {...p} />,
+  h3:     ({...p}) => <h3     className="text-[12px] font-medium text-white/65 mt-2 mb-0.5" {...p} />,
+  p:      ({...p}) => <p      style={{ fontSize: 14, color: 'rgba(255,255,255,0.58)', fontWeight: 300, lineHeight: 1.75 }} className="mb-2" {...p} />,
   ul:     ({...p}) => <ul     className="list-none pl-0 mb-2 space-y-1" {...p} />,
-  ol:     ({...p}) => <ol     className="list-decimal pl-4 mb-2 space-y-0.5 text-[11px] text-white/50" {...p} />,
-  li:     ({...p}) => <li     className="text-[11px] text-white/50 flex gap-1.5 leading-relaxed before:content-['▸'] before:text-emerald-400/50 before:text-[9px] before:mt-0.5" {...p} />,
-  strong: ({...p}) => <strong className="font-semibold text-white/80" {...p} />,
+  ol:     ({...p}) => <ol     className="list-decimal pl-4 mb-2 space-y-0.5 text-[13px] text-white/52 font-light" {...p} />,
+  li:     ({...p}) => <li     style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)' }} className="flex gap-1.5 leading-relaxed before:content-['▸'] before:text-emerald-400/50 before:text-[9px] before:mt-0.5" {...p} />,
+  strong: ({...p}) => <strong style={{ fontWeight: 500, color: 'rgba(255,255,255,0.82)' }} {...p} />,
   code: ({ className, children, ...p }: React.ComponentPropsWithoutRef<"code">) => {
     const block = /language-(\w+)/.exec(className || "");
     return block
-      ? <pre className="border border-white/6 rounded-xl overflow-x-auto text-[10px] font-mono p-3 my-2" style={{ background: "#0a0b0f" }}><code className={className} {...p}>{children}</code></pre>
-      : <code className="px-1.5 py-px rounded text-[10px] text-emerald-400 font-mono" style={{ background: "rgba(52,211,153,0.08)" }} {...p}>{children}</code>;
+      ? <pre className="border border-white/[0.07] rounded-xl overflow-x-auto text-[11px] font-mono p-3 my-2 bg-white/[0.04]"><code className={className} {...p}>{children}</code></pre>
+      : <code style={{ fontSize: 12, color: 'rgba(52,211,153,0.9)', background: 'rgba(52,211,153,0.08)', padding: '2px 7px', borderRadius: 5 }} className="font-mono" {...p}>{children}</code>;
   },
 };
 
-/* ─── Command bar items ─── */
+/* ─── Command chips ─── */
 const CMDS = [
-  { label: "Timetable",    icon: Clock,     action: "timetable",     accent: "hover:border-cyan-400/30 hover:text-cyan-300" },
-  { label: "Auto-Schedule",icon: Calendar,  action: "auto_schedule", accent: "hover:border-blue-400/30 hover:text-blue-300" },
-  { label: "Study RAG",   icon: Brain,     action: "materials",     accent: "hover:border-violet-400/30 hover:text-violet-300" },
-  { label: "Weekly Review",icon: BarChart2, action: "weekly_review", accent: "hover:border-emerald-400/30 hover:text-emerald-300" },
-  { label: "Study Topics", icon: BookOpen,  action: "study_today",   accent: "hover:border-amber-400/30 hover:text-amber-300" },
-  { label: "Deep Work",   icon: Zap,       action: "focus",         accent: "hover:border-pink-400/30 hover:text-pink-300" },
+  { label: "Timetable",     icon: Clock,     action: "timetable" },
+  { label: "Auto-Schedule", icon: Calendar,  action: "auto_schedule" },
+  { label: "Study RAG",     icon: Brain,     action: "materials" },
+  { label: "Weekly Review", icon: BarChart2, action: "weekly_review" },
+  { label: "Study Topics",  icon: BookOpen,  action: "study_today" },
+  { label: "Deep Work",     icon: Zap,       action: "focus" },
+];
+
+/* ─── Quick action cards for empty state ─── */
+const CARDS = [
+  { label: "Plan My Day",       desc: "Auto-schedule tasks & classes",  icon: Calendar, action: "auto_schedule",cmd: "Auto-Schedule My Day" },
+  { label: "What to Study",     desc: "AI picks the best topic now",    icon: BookOpen, action: "study_today",  cmd: "What Should I Study Today" },
+  { label: "Smart Timetable",   desc: "Build a weekly AI schedule",     icon: Clock,    action: "timetable",    cmd: "" },
+  { label: "Study RAG",         desc: "Ask questions about your notes", icon: Brain,    action: "materials",    cmd: "" },
 ];
 
 /* ─── Empty workspace ─── */
@@ -53,81 +61,71 @@ function EmptyWorkspace({ onAction, onOpenTimetable, onOpenMaterials, onOpenFocu
   assignmentsData: Assignment[]; totalFocusMinutes: number;
 }) {
   const next = assignmentsData[0];
-  const CARDS = [
-    { label: "Plan My Day",          desc: "Auto-schedule based on your tasks",   icon: Calendar, color: "from-blue-500/8 to-cyan-500/4",    border: "border-blue-400/12",   accent: "text-blue-300",   action: () => onAction("auto_schedule","Auto-Schedule My Day") },
-    { label: "What to Study",        desc: "AI picks the best topic right now",   icon: BookOpen, color: "from-emerald-500/8 to-teal-500/4", border: "border-emerald-400/12",accent: "text-emerald-300",action: () => onAction("study_today","What Should I Study Today") },
-    { label: "Smart Timetable",      desc: "Build a weekly AI-powered schedule",  icon: Clock,    color: "from-cyan-500/8 to-sky-500/4",     border: "border-cyan-400/12",   accent: "text-cyan-300",   action: onOpenTimetable },
-    { label: "Study RAG",            desc: "Ask questions about your notes",      icon: Brain,    color: "from-violet-500/8 to-purple-500/4", border: "border-violet-400/12", accent: "text-violet-300", action: onOpenMaterials },
-    { label: "Weekly Review",        desc: "AI analysis of your productivity",    icon: BarChart2,color: "from-amber-500/8 to-orange-500/4", border: "border-amber-400/12",  accent: "text-amber-300",  action: () => onAction("weekly_review","Generate Weekly Review") },
-    { label: "Deep Work Session",    desc: "Start a focus timer with blockers",   icon: Zap,      color: "from-pink-500/8 to-rose-500/4",    border: "border-pink-400/12",   accent: "text-pink-300",   action: onOpenFocus },
-  ];
+
+  const handleCard = (card: typeof CARDS[0]) => {
+    if (card.action === "timetable")    return onOpenTimetable();
+    if (card.action === "materials")    return onOpenMaterials();
+    if (card.action === "focus")        return onOpenFocus();
+    if (card.cmd) return onAction(card.action, card.cmd);
+  };
 
   return (
-    <div className="flex-1 overflow-y-auto px-5 py-5">
-      {/* Status strip */}
-      <div className="grid grid-cols-3 gap-2 mb-5">
+    <div className="flex-1 overflow-y-auto px-[18px] pb-4 scrollbar-hidden">
+      
+      {/* Hero text strip */}
+      <div style={{ textAlign: 'center', padding: '28px 24px 20px' }}>
+        <p style={{ 
+          fontFamily: "'Instrument Serif', serif",
+          fontSize: 38, fontWeight: 400, 
+          color: 'rgba(255,255,255,0.88)',
+          lineHeight: 1.05, letterSpacing: '-1px',
+          marginBottom: 8
+        }}>
+          Your mind,{' '}
+          <em style={{ fontStyle: 'normal', color: 'rgba(255,255,255,0.28)' }}>finally</em>
+          {' '}in order.
+        </p>
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.32)', fontWeight: 300, lineHeight: 1.7, maxWidth: 380, margin: '0 auto' }}>
+          One OS for your study, schedule, focus, and reflection.
+        </p>
+      </div>
+
+      {/* Metrics row */}
+      <div className="grid grid-cols-3 gap-2.5 mb-5">
         {[
-          {
-            label: "Next Deadline",
-            value: next?.title ?? "None synced",
-            sub: next?.courseName ?? "Sync Classroom →",
-            accent: "from-amber-500/6 to-transparent",
-            border: "border-amber-400/10",
-          },
-          {
-            label: "Focus Logged",
-            value: `${totalFocusMinutes}`,
-            sub: "minutes deep work",
-            accent: "from-emerald-500/6 to-transparent",
-            border: "border-emerald-400/10",
-          },
-          {
-            label: "AI Status",
-            value: "Ready",
-            sub: "Gemini 2.5 connected",
-            accent: "from-blue-500/6 to-transparent",
-            border: "border-blue-400/10",
-          },
+          { label: "Next Deadline", value: next?.title ?? "None", sub: next?.courseName ?? "Sync Classroom", color: "rgba(251,191,36,0.7)" },
+          { label: "Focus Logged", value: `${totalFocusMinutes}m`, sub: "deep work total", color: "rgba(52,211,153,0.7)" },
+          { label: "AI Status", value: "Ready", sub: "Gemini 2.5 connected", color: "rgba(96,165,250,0.7)" },
         ].map(s => (
-          <div key={s.label}
-            className={`p-3 rounded-xl border bg-gradient-to-br ${s.accent} ${s.border}`}>
-            <p className="text-[8px] font-bold uppercase tracking-wider text-white/25 mb-1.5">{s.label}</p>
-            <p className="text-[12px] font-bold text-white/75 truncate leading-tight">{s.value}</p>
-            <p className="text-[9px] text-white/25 truncate mt-0.5">{s.sub}</p>
+          <div key={s.label} style={{ background: "rgba(255,255,255,0.038)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 14, padding: '14px 18px', border: "1px solid rgba(255,255,255,0.08)" }}>
+            <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: s.color, marginBottom: 6 }}>{s.label}</p>
+            <p style={{ fontFamily: "'Instrument Serif', serif", fontSize: 20, color: 'rgba(255,255,255,0.88)', marginBottom: 2 }} className="truncate">{s.value}</p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontWeight: 300 }} className="truncate">{s.sub}</p>
           </div>
         ))}
       </div>
 
-      {/* Action grid */}
-      <p className="text-[9px] font-bold tracking-widest text-white/15 uppercase mb-3">Quick Actions</p>
-      <div className="grid grid-cols-2 gap-2 mb-5">
+      {/* Quick Actions label */}
+      <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.22)', marginBottom: 12, paddingLeft: 4 }}>Quick Actions</p>
+
+      {/* 2×2 grid */}
+      <div className="grid grid-cols-2 gap-2.5 pb-3">
         {CARDS.map(c => {
           const Icon = c.icon;
           return (
-            <button key={c.label} onClick={c.action}
-              className={`flex items-start gap-3 p-3.5 rounded-xl border bg-gradient-to-br text-left group transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] ${c.color} ${c.border} hover:border-opacity-30`}>
-              <div className={`w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center shrink-0 group-hover:bg-white/8 transition-colors`}>
-                <Icon size={13} className={`${c.accent} opacity-70 group-hover:opacity-100 transition-opacity`} />
+            <button key={c.label} onClick={() => handleCard(c)}
+              style={{ background: "rgba(255,255,255,0.038)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: '18px 20px', cursor: 'pointer', transition: 'all 0.2s' }}
+              className="flex items-start gap-3 text-left group hover:bg-white/[0.06] hover:-translate-y-[2px]">
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.07)' }} className="flex items-center justify-center shrink-0">
+                <Icon size={18} className="text-white/40 group-hover:text-white/70 transition-colors" />
               </div>
               <div>
-                <p className="text-[11px] font-semibold text-white/65 group-hover:text-white/85 transition-colors leading-tight">{c.label}</p>
-                <p className="text-[9px] text-white/25 mt-0.5 leading-tight">{c.desc}</p>
+                <p style={{ fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.85)', marginBottom: 4 }}>{c.label}</p>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.32)', fontWeight: 300, lineHeight: 1.5 }}>{c.desc}</p>
               </div>
-              <ArrowRight size={10} className={`ml-auto mt-1 ${c.accent} opacity-0 group-hover:opacity-50 transition-opacity shrink-0`} />
             </button>
           );
         })}
-      </div>
-
-      {/* Chat hint */}
-      <div className="flex items-center gap-3 p-3 rounded-xl border border-white/5"
-        style={{ background: "linear-gradient(135deg,rgba(255,255,255,0.015),transparent)" }}>
-        <MessageSquare size={13} className="text-white/15 shrink-0" />
-        <div>
-          <p className="text-[10px] text-white/35 font-medium">Or just chat below</p>
-          <p className="text-[9px] text-white/20 mt-0.5">Ask LifeOS anything — schedule, study, review, or focus.</p>
-        </div>
-        <CornerDownRight size={11} className="text-white/15 ml-auto shrink-0" />
       </div>
     </div>
   );
@@ -155,7 +153,7 @@ export default function CenterPanel({
   const isEmpty = chatHistory.length === 0 && !finalAnswer;
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col h-full min-h-0" style={{ background: "transparent" }}>
 
       {/* ── Content area ── */}
       {isEmpty ? (
@@ -165,19 +163,18 @@ export default function CenterPanel({
           assignmentsData={assignmentsData} totalFocusMinutes={totalFocusMinutes}
         />
       ) : (
-        <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3 scrollbar-hidden">
 
           {/* Final answer panel */}
           <AnimatePresence>
             {finalAnswer && (
               <motion.div key="ans" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="rounded-2xl overflow-hidden border border-emerald-400/15"
-                style={{ background: "linear-gradient(135deg,rgba(16,185,129,0.06),rgba(6,182,212,0.03))" }}>
+                style={{ background: "rgba(255,255,255,0.028)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }}
+                className="rounded-2xl overflow-hidden border border-white/[0.09]">
                 {/* header */}
-                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/5"
-                  style={{ background: "rgba(16,185,129,0.05)" }}>
+                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.07]">
                   <Sparkles size={11} className="text-emerald-400" />
-                  <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">LifeOS Response</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em' }} className="text-emerald-400 uppercase">LifeOS Response</span>
                   <div className="ml-auto flex items-center gap-1">
                     <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
                     <span className="text-[8px] text-emerald-400/50">Live</span>
@@ -193,22 +190,18 @@ export default function CenterPanel({
           {/* Chat history */}
           {chatHistory.map(msg => (
             <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[78%] px-4 py-2.5 rounded-2xl text-[11px] leading-relaxed ${
-                msg.role === "user"
-                  ? "rounded-br-sm border border-white/8 text-white/70"
-                  : "rounded-bl-sm border border-white/5 text-white/50"
-              }`}
-              style={msg.role === "user"
-                ? { background: "linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.04))" }
-                : { background: "linear-gradient(135deg,#111317,#0f1014)" }}>
+              <div style={msg.role === "user"
+                ? { background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.09)", fontSize: 14, padding: '12px 16px', borderRadius: '18px 18px 4px 18px' }
+                : { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 14, padding: '12px 16px', borderRadius: '18px 18px 18px 4px' }
+              } className={`max-w-[85%] text-white/90`}>
                 {msg.role === "ai" && !msg.text
-                  ? <div className="flex gap-1 items-center">
-                      <Loader2 size={11} className="animate-spin text-emerald-400" />
-                      <span className="text-[10px] text-white/25">Thinking…</span>
+                  ? <div className="flex gap-1.5 items-center">
+                      <Loader2 size={13} className="animate-spin text-emerald-400" />
+                      <span className="text-[12px] text-white/40 font-light">Thinking…</span>
                     </div>
                   : msg.role === "ai"
                     ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD}>{msg.text}</ReactMarkdown>
-                    : <p>{msg.text}</p>
+                    : <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)' }}>{msg.text}</p>
                 }
               </div>
             </div>
@@ -218,42 +211,38 @@ export default function CenterPanel({
       )}
 
       {/* ── Input zone ── */}
-      <div className="flex-shrink-0 border-t border-white/5"
-        style={{ background: "linear-gradient(180deg,#0d0e13,#0b0c10)" }}>
-
+      <div style={{ background: "rgba(255,255,255,0.032)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid rgba(255,255,255,0.08)", padding: '14px 18px 12px', flexShrink: 0 }}>
         {/* Text input */}
-        <div className="px-4 pt-3 pb-2">
-          <form onSubmit={onSubmit} className="flex items-end gap-2">
-            <div className="flex-1 rounded-xl overflow-hidden border border-white/7 transition-all duration-200 focus-within:border-emerald-400/25"
-              style={{ background: "linear-gradient(135deg,#111419,#0f1015)" }}>
-              <textarea
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSubmit(); } }}
-                disabled={isThinking}
-                placeholder="Message LifeOS…   (Shift+Enter for newline)"
-                rows={1}
-                className="w-full bg-transparent text-white/70 px-4 py-2.5 outline-none resize-none text-[11px] placeholder-white/15 disabled:opacity-40 min-h-[42px] max-h-[100px]"
-              />
-            </div>
-            <button type="submit" disabled={isThinking || !chatInput.trim()}
-              className="h-[42px] w-[42px] flex-shrink-0 rounded-xl flex items-center justify-center disabled:opacity-30 disabled:grayscale transition-all active:scale-95 hover:scale-105"
-              style={{ background: "linear-gradient(135deg,#34d399,#0ea5e9)" }}>
-              {isThinking ? <Loader2 size={14} className="animate-spin text-black" /> : <Send size={13} className="text-black" />}
-            </button>
-          </form>
-        </div>
+        <form onSubmit={onSubmit} className="flex items-end gap-2">
+          <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14 }} className="overflow-hidden flex-1 focus-within:ring-1 focus-within:ring-emerald-400/20 transition-all">
+            <textarea
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSubmit(); } }}
+              disabled={isThinking}
+              placeholder="Message LifeOS…   (Shift+Enter for newline)"
+              rows={1}
+              style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}
+              className="w-full bg-transparent px-5 py-3 outline-none resize-none placeholder-white/20 font-light disabled:opacity-40 min-h-[46px] max-h-[120px] scrollbar-hidden"
+            />
+          </div>
+          <button type="submit" disabled={isThinking || !chatInput.trim()}
+            style={{ background: 'linear-gradient(135deg, #1a9e70, #0369a1)', width: 44, height: 44, borderRadius: 12 }}
+            className="flex-shrink-0 flex items-center justify-center disabled:opacity-30 disabled:grayscale transition-all active:scale-95 hover:scale-[1.08] cursor-pointer">
+            {isThinking ? <Loader2 size={16} className="animate-spin text-white" /> : <Send size={15} className="text-white" />}
+          </button>
+        </form>
 
-        {/* Command bar */}
-        <div className="px-4 pb-3 flex gap-1.5 overflow-x-auto scrollbar-none">
+        {/* Command chips */}
+        <div className="flex gap-1.5 mt-3 flex-wrap">
           {CMDS.map(c => {
             const Icon = c.icon;
             return (
               <button key={c.action} disabled={isThinking} onClick={() => handleChip(c.action)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/6 text-white/30 shrink-0 group transition-all duration-150 hover:border-opacity-100 ${c.accent} disabled:opacity-20`}
-                style={{ background: "rgba(255,255,255,0.02)" }}>
-                <Icon size={10} className="opacity-50 group-hover:opacity-80 transition-opacity" />
-                <span className="text-[10px] font-medium whitespace-nowrap">{c.label}</span>
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 100, padding: '6px 14px', fontSize: 12, color: "rgba(255,255,255,0.42)", cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.18s', fontWeight: 400 }}
+                className="hover:text-white/85 hover:border-white/20 flex items-center gap-1.5 disabled:opacity-20 group">
+                <Icon size={11} className="opacity-50 group-hover:opacity-80 transition-opacity" />
+                <span>{c.label}</span>
               </button>
             );
           })}

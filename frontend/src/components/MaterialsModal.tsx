@@ -8,7 +8,7 @@ import { X, Plus, Trash2, BookOpen, Brain, FileText, ChevronRight, ChevronLeft, 
 
 interface Material { id:string; title:string; source?:string; courseName?:string; content_available?:boolean; created_at:string; topicName?:string; content_status?:string; content_type?:string; driveFileId?:string; mimeType?:string; }
 interface ClassroomCourse { courseId:string; courseName:string; section?:string; topics?:{id:string;name:string}[]; materials:{type:string;title:string;alternateLink?:string;driveFileId?:string;courseId:string;courseName:string;mimeType?:string;sourceType?:string;parentTitle?:string;topicName?:string;content_type?:string;}[]; }
-interface QResult { answer?:string; sources?:string[]; fallback_used?:boolean; confidence?:number; missing_content_materials?:{id:string;title:string}[]; chunks_used?:number; selected_materials?:string[]; }
+interface QResult { answer?:string; sources?:string[]; fallback_used?:boolean; confidence?:number; missing_content_materials?:{id:string;title:string}[]; chunks_used?:number; selected_materials?:string[]; action_type?:string; }
 
 const ACTIONS = [
   {id:"summarize",label:"Summarize"},{id:"exam_notes",label:"Exam Notes"},{id:"mcqs",label:"Generate MCQs"},
@@ -214,12 +214,13 @@ export default function MaterialsModal({isOpen,onClose,userId}:{isOpen:boolean;o
       setResult(d);
       
       if (needsExtract.length > 0) fetchMaterials();
-    }catch(e:any){
-      console.error("[RAG] Query fetch error:", e);
-      if (e.name === "AbortError") {
+    }catch(e: unknown){
+      const error = e as Error;
+      console.error("[RAG] Query fetch error:", error);
+      if (error.name === "AbortError") {
         setResult({answer:"**AI took too long.**\n\nFallback local summary mode triggered.", fallback_used: true});
       } else {
-        setResult({answer:`**Connection error.**\n\n${e.message || "Failed to reach backend."}`});
+        setResult({answer:`**Connection error.**\n\n${error.message || "Failed to reach backend."}`});
       }
     }finally{
       setQuerying(false);

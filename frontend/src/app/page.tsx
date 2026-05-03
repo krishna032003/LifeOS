@@ -10,6 +10,7 @@ import WeeklyReviewModal from "@/components/WeeklyReviewModal";
 import FocusModal from "@/components/FocusModal";
 import TimetableModal from "@/components/TimetableModal";
 import MaterialsModal from "@/components/MaterialsModal";
+import SceneBackground from "@/components/SceneBackground";
 import { motion } from "framer-motion";
 
 interface Course { id?: string; name?: string; section?: string; descriptionHeading?: string; alternateLink?: string; }
@@ -254,21 +255,17 @@ export default function Home() {
 
   if (!mounted || isAppLoading) {
     return (
-      <div className="min-h-screen bg-[#080809] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#050507" }}>
         <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="w-7 h-7 border-2 border-emerald-400/20 border-t-emerald-400 rounded-full" />
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[#080809]">
-      {/* Subtle background gradient */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-emerald-500/3 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[200px] bg-purple-500/3 rounded-full blur-3xl" />
-      </div>
+    <div className="relative w-full h-screen overflow-hidden">
+      <SceneBackground />
 
-      <div className="relative z-10 h-full flex flex-col">
+      <div className="absolute inset-0 z-10 flex flex-col">
         <DashboardLayout
           sidebarContent={
             <AppSidebar
