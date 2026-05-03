@@ -3,7 +3,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 import os
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=os.getenv("GEMINI_API_KEY", "dummy"))
+def get_llm():
+    return ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=os.getenv("GEMINI_API_KEY", "dummy"))
 
 async def planner_node(state: AgentState):
     """
@@ -40,21 +41,37 @@ async def planner_node(state: AgentState):
         
     user_msg = messages[-1].content
     
+    # Rule-based check for simple conversational messages
+    chat_greetings = ["hi", "hello", "hey", "how are you", "what's up", "thanks", "okay", "cool", "who are you", "what can you do", "who are you?", "what can you do?"]
+    clean_msg = user_msg.lower().strip()
+    if clean_msg in chat_greetings or clean_msg.strip(".,!?") in chat_greetings:
+        log_entry = {
+            "node": "Planner",
+            "message": "Routed to Chat: Detected simple greeting/conversational intent."
+        }
+        return {
+            "intent_detected": "chat",
+            "decision_reason": "Simple conversational message.",
+            "active_node": "Planner",
+            "pipeline_logs": [log_entry]
+        }
+    
     system_prompt = f"""
     You are the Planner Agent for a student productivity system.
     The user is asking: {user_msg}
     
     Determine if this requires:
-    1) 'study' - Generating or reviewing study material.
-    2) 'productivity' - Updating calendar/schedule or checking time.
-    3) 'memory' - Recalling past information, context, or previous chats.
+    1) 'chat' - greetings, identity questions, casual talk, small talk, general capability questions. Do NOT route vague social messages to memory.
+    2) 'study' - study topics, notes, exam, learning, practice questions.
+    3) 'productivity' - timetable, schedule, calendar, focus, deadlines, tasks.
+    4) 'memory' - explicitly asks to remember/recall past conversation/context (e.g. "what did I say earlier", "remember my goal", "recall previous chat").
     
     Provide your decision and a brief 1-sentence reasoning in the following format:
-    INTENT: <study/productivity/memory>
+    INTENT: <chat/study/productivity/memory>
     REASON: <why you chose this>
     """
     
-    response = await llm.ainvoke([
+    response = await get_llm().ainvoke([
         SystemMessage(content=system_prompt), 
         HumanMessage(content="Process my request.")
     ])
@@ -67,7 +84,7 @@ async def planner_node(state: AgentState):
         line = line.strip()
         if line.startswith("INTENT:"):
             parsed_intent = line.replace("INTENT:", "").strip().lower()
-            if parsed_intent in ["study", "productivity", "memory"]:
+            if parsed_intent in ["study", "productivity", "memory", "chat"]:
                 intent = parsed_intent
         elif line.startswith("REASON:"):
             reason = line.replace("REASON:", "").strip()

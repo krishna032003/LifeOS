@@ -40,6 +40,7 @@ export default function ParticleBackground() {
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseout", handleMouseOut);
 
+    // eslint-disable-next-line react-hooks/unsupported-syntax
     class Particle {
       x: number;
       y: number;
@@ -82,27 +83,27 @@ export default function ParticleBackground() {
         if (this.baseX < 0 || this.baseX > canvas!.width) this.speedX *= -1;
         if (this.baseY < 0 || this.baseY > canvas!.height) this.speedY *= -1;
 
-        let dx = mouse.x - this.x;
-        let dy = mouse.y - this.y;
-        let distance = Math.sqrt(dx * dx + dy * dy);
-        let forceDirectionX = dx / distance;
-        let forceDirectionY = dy / distance;
+        const dx = mouse.x - this.x;
+        const dy = mouse.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const forceDirectionX = dx / distance;
+        const forceDirectionY = dy / distance;
         
-        let maxDistance = mouse.radius;
-        let force = (maxDistance - distance) / maxDistance;
-        let directionX = forceDirectionX * force * this.density;
-        let directionY = forceDirectionY * force * this.density;
+        const maxDistance = mouse.radius;
+        const force = (maxDistance - distance) / maxDistance;
+        const directionX = forceDirectionX * force * this.density;
+        const directionY = forceDirectionY * force * this.density;
 
         if (distance < mouse.radius) {
           this.x -= directionX;
           this.y -= directionY;
         } else {
           if (this.x !== this.baseX) {
-            let dx = this.x - this.baseX;
+            const dx = this.x - this.baseX;
             this.x -= dx / 15;
           }
           if (this.y !== this.baseY) {
-            let dy = this.y - this.baseY;
+            const dy = this.y - this.baseY;
             this.y -= dy / 15;
           }
         }
@@ -113,8 +114,8 @@ export default function ParticleBackground() {
       particles = [];
       const numParticles = (canvas.width * canvas.height) / 8000; 
       for (let i = 0; i < numParticles; i++) {
-        let x = Math.random() * canvas.width;
-        let y = Math.random() * canvas.height;
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
         particles.push(new Particle(x, y));
       }
     };
@@ -123,9 +124,9 @@ export default function ParticleBackground() {
       let opacityValue = 1;
       for (let a = 0; a < particles.length; a++) {
         for (let b = a; b < particles.length; b++) {
-          let dx = particles[a].x - particles[b].x;
-          let dy = particles[a].y - particles[b].y;
-          let distance = dx * dx + dy * dy;
+          const dx = particles[a].x - particles[b].x;
+          const dy = particles[a].y - particles[b].y;
+          const distance = dx * dx + dy * dy;
           if (distance < 12000) {
             opacityValue = 1 - (distance / 12000);
             ctx!.strokeStyle = `rgba(173, 255, 166, ${opacityValue * 0.2})`;

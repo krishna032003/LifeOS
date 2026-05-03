@@ -9,7 +9,7 @@ class UserProfileSchema(BaseModel):
     year: int = Field(..., ge=1, le=5, description="Year of study (1-5)")
     batch: str = Field(..., description="Batch or division section")
     goals: List[str] = Field(default_factory=list, description="Top active goals")
-    constraints: List[str] = Field(default_factory=list, description="Schedule constraints")
+    hard_constraints: List[str] = Field(default_factory=list, description="Schedule constraints")
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

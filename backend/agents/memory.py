@@ -13,17 +13,20 @@ index_name = "lifeos"
 pc = None
 index = None
 
-# Create a genai client for embeddings
-_genai_client = genai.Client(api_key=gemini_key) if gemini_key else None
+# Create a genai client for embeddings dynamically
+def get_genai_client():
+    gemini_key = os.getenv("GEMINI_API_KEY", "")
+    return genai.Client(api_key=gemini_key) if gemini_key else None
 
 async def _embed(text: str) -> list:
     """Embed text using Gemini text-embedding-004 via the new google-genai SDK."""
-    if not _genai_client:
+    _client = get_genai_client()
+    if not _client:
         raise RuntimeError("GEMINI_API_KEY not set")
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(
         None,
-        lambda: _genai_client.models.embed_content(
+        lambda: _client.models.embed_content(
             model="models/embedding-001",
             contents=text,
         )
@@ -90,8 +93,9 @@ async def memory_node(state: AgentState):
             }
             
     except Exception as e:
+        print(f"Pinecone embedding/query error: {e}")
         return {
-            "pipeline_logs": [{"node": "Memory", "message": f"Retrieval failed via vector database: {str(e)}"}],
+            "pipeline_logs": [{"node": "Memory", "message": "Memory skipped (vector retrieval unavailable)."}],
             "active_node": "Memory"
         }
 

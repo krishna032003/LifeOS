@@ -8,7 +8,7 @@ from backend.agents.reflection import reflection_node
 
 def route_after_planner(state: AgentState):
     intent = state.get("intent_detected", "productivity")
-    if intent in ["study", "productivity", "memory"]:
+    if intent in ["study", "productivity", "memory", "chat"]:
         return intent
     return "productivity"
 
@@ -43,7 +43,8 @@ builder.add_conditional_edges(
     {
         "study": "study",
         "productivity": "productivity",
-        "memory": "memory"
+        "memory": "memory",
+        "chat": "reflection"
     }
 )
 

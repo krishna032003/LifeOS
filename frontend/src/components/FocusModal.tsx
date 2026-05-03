@@ -18,7 +18,7 @@ export default function FocusModal({ isOpen, onClose, onStart, onStop, active, e
   const [timeLeft, setTimeLeft] = useState("");
 
   useEffect(() => {
-    let interval: any;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (active && endTime) {
       interval = setInterval(() => {
         const remaining = new Date(endTime).getTime() - new Date().getTime();
@@ -32,7 +32,9 @@ export default function FocusModal({ isOpen, onClose, onStart, onStop, active, e
         }
       }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [active, endTime, onStop]);
 
   const toggleApp = (app: string) => {

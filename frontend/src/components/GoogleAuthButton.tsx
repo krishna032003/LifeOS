@@ -21,7 +21,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const API_BASE = "http://localhost:8000";
+import { API_BASE } from "@/services/api";
 const CALLBACK_PATH = "/auth/callback";
 const POPUP_WIDTH = 500;
 const POPUP_HEIGHT = 600;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, Activity, Zap, X } from 'lucide-react';
+import { Activity, Zap, X } from 'lucide-react';
 
 interface WeeklyReviewData {
     score: number;

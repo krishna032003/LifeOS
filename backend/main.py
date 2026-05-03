@@ -6,13 +6,15 @@ from dotenv import load_dotenv
 import sys
 import os
 import asyncio
+import platform
 from datetime import datetime, timedelta, timezone
 
 # Ensure the parent directory is in the Python path so "backend.agents" can be resolved
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Load environment variables from .env file
-load_dotenv(override=True)
+# Load environment variables from .env file explicitly
+env_path = os.path.join(os.path.dirname(__file__), ".env")
+load_dotenv(env_path, override=True)
 
 
 app = FastAPI(title="LifeOS Agent Backend")
@@ -25,6 +27,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from backend.routers.timetable import router as timetable_router
+from backend.routers.materials import router as materials_router
+app.include_router(timetable_router)
+app.include_router(materials_router)
 
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
@@ -65,6 +72,12 @@ async def startup_db_client():
         print("Pinged your deployment. You successfully connected to MongoDB!")
     except Exception as e:
         print(f"MongoDB connection error: {e}")
+        
+    gemini_key = os.getenv("GEMINI_API_KEY", "")
+    if gemini_key:
+        print(f"GEMINI_API_KEY loaded: yes, length: {len(gemini_key)}, ends with: {gemini_key[-4:] if len(gemini_key) > 4 else '***'}")
+    else:
+        print("GEMINI_API_KEY loaded: no")
 
 class GoogleAuthRequest(BaseModel):
     token: str
@@ -250,6 +263,10 @@ class ChatRequest(BaseModel):
     command_type: str = ""
     message: str = ""
 
+@app.get("/")
+async def root():
+    return {"project": "LifeOS Command Center", "status": "online", "message": "Welcome to LifeOS AI"}
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
@@ -333,9 +350,13 @@ async def chat_endpoint(request: ChatRequest):
                 yield f"event: final\ndata: {json.dumps(final_payload)}\n\n"
             
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            error_payload = {"error": str(e)}
+            error_str = str(e)
+            if "429" in error_str or "quota" in error_str.lower() or "exhausted" in error_str.lower():
+                error_payload = {"error": "Gemini quota exceeded for current API key/project."}
+            else:
+                import traceback
+                traceback.print_exc()
+                error_payload = {"error": str(e)}
             yield f"event: error\ndata: {json.dumps(error_payload)}\n\n"
             
     return StreamingResponse(event_generator(), media_type="text/event-stream")
@@ -417,6 +438,458 @@ async def get_classroom_courses(user_id: str):
 
         return {"success": True, "courses": courses, "assignments": upcoming_assignments}
 
+@app.get("/api/classroom/{user_id}/materials")
+async def get_classroom_materials(user_id: str):
+    """Fetch all courses with courseWork + courseWorkMaterials, paginated, with topics and content extraction."""
+    try:
+        user = await db.users.find_one({"user_id": user_id})
+    except Exception:
+        user = MOCK_DB.get(user_id)
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    access_token = user.get("google_access_token")
+    if not access_token:
+        raise HTTPException(status_code=400, detail="Google access token not found. Please connect Google Classroom first.")
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    async def paginated_get(client, url, key, params=None):
+        """Fetch all pages from a paginated Classroom API endpoint."""
+        items = []
+        next_token = None
+        for _ in range(20):  # safety cap
+            p = dict(params or {})
+            p["pageSize"] = 100
+            if next_token:
+                p["pageToken"] = next_token
+            res = await client.get(url, headers=headers, params=p)
+            if res.status_code != 200:
+                break
+            data = res.json()
+            items.extend(data.get(key, []))
+            next_token = data.get("nextPageToken")
+            if not next_token:
+                break
+        return items
+
+    result_courses = []
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        # Fetch ALL courses (paginated)
+        courses = await paginated_get(client, "https://classroom.googleapis.com/v1/courses", "courses", {"courseStates": "ACTIVE"})
+
+        async def fetch_course_data(course):
+            cid = course["id"]
+            cname = course.get("name", "Unknown")
+
+            # Fetch topics for grouping
+            topics_list = await paginated_get(client, f"https://classroom.googleapis.com/v1/courses/{cid}/topics", "topic")
+            topic_map = {t["topicId"]: t.get("name", "Untitled Topic") for t in topics_list}
+
+            materials_list = []
+
+            # Fetch ALL courseWork (paginated)
+            all_cw = await paginated_get(client, f"https://classroom.googleapis.com/v1/courses/{cid}/courseWork", "courseWork")
+            for work in all_cw:
+                topic_id = work.get("topicId", "")
+                topic_name = topic_map.get(topic_id, "")
+                for mat in work.get("materials", []):
+                    entry = _build_material(mat, cid, cname, "coursework", work.get("title", ""), topic_name)
+                    if entry:
+                        materials_list.append(entry)
+
+            # Fetch ALL courseWorkMaterials (paginated)
+            all_cwm = await paginated_get(client, f"https://classroom.googleapis.com/v1/courses/{cid}/courseWorkMaterials", "courseWorkMaterial")
+            for cwm in all_cwm:
+                topic_id = cwm.get("topicId", "")
+                topic_name = topic_map.get(topic_id, "")
+                for mat in cwm.get("materials", []):
+                    entry = _build_material(mat, cid, cname, "material", cwm.get("title", ""), topic_name)
+                    if entry:
+                        materials_list.append(entry)
+
+            return {
+                "courseId": cid,
+                "courseName": cname,
+                "section": course.get("section", ""),
+                "topics": [{"id": t["topicId"], "name": t.get("name", "")} for t in topics_list],
+                "materials": materials_list,
+            }
+
+        if courses:
+            results = await asyncio.gather(*[fetch_course_data(c) for c in courses])
+            result_courses = list(results)
+
+    return {"success": True, "courses": result_courses}
+
+
+def _detect_content_type(mime: str, title: str) -> str:
+    mime_l = mime.lower()
+    title_l = title.lower()
+    if "pdf" in mime_l or title_l.endswith(".pdf"):
+        return "pdf"
+    if "presentation" in mime_l or "pptx" in mime_l or title_l.endswith(".pptx") or title_l.endswith(".ppt"):
+        return "ppt"
+    if "document" in mime_l or "msword" in mime_l or title_l.endswith(".docx") or title_l.endswith(".doc"):
+        return "doc"
+    if "spreadsheet" in mime_l or title_l.endswith(".xlsx"):
+        return "spreadsheet"
+    if "text" in mime_l or title_l.endswith(".txt"):
+        return "text"
+    if "image" in mime_l:
+        return "image"
+    return "unknown"
+
+
+def _build_material(mat: dict, course_id: str, course_name: str, source_type: str, parent_title: str, topic_name: str) -> dict | None:
+    if "driveFile" in mat:
+        df = mat["driveFile"].get("driveFile", {})
+        mime = df.get("mimeType", "")
+        title = df.get("title", "Untitled")
+        return {
+            "type": "drive",
+            "title": title,
+            "alternateLink": df.get("alternateLink", ""),
+            "driveFileId": df.get("id", ""),
+            "courseId": course_id,
+            "courseName": course_name,
+            "sourceType": source_type,
+            "parentTitle": parent_title,
+            "topicName": topic_name,
+            "mimeType": mime,
+            "content_type": _detect_content_type(mime, title),
+        }
+    elif "link" in mat:
+        lnk = mat["link"]
+        return {
+            "type": "link",
+            "title": lnk.get("title", lnk.get("url", "Untitled Link")),
+            "alternateLink": lnk.get("url", ""),
+            "courseId": course_id,
+            "courseName": course_name,
+            "sourceType": source_type,
+            "parentTitle": parent_title,
+            "topicName": topic_name,
+            "content_type": "link",
+        }
+    elif "youtubeVideo" in mat:
+        yt = mat["youtubeVideo"]
+        return {
+            "type": "youtube",
+            "title": yt.get("title", "YouTube Video"),
+            "alternateLink": yt.get("alternateLink", ""),
+            "courseId": course_id,
+            "courseName": course_name,
+            "sourceType": source_type,
+            "parentTitle": parent_title,
+            "topicName": topic_name,
+            "content_type": "youtube",
+        }
+    return None
+
+
+@app.get("/api/debug/drive")
+async def debug_drive_file(user_id: str, drive_file_id: str):
+    if not user_id or not drive_file_id:
+        return {"error": "Missing user_id or drive_file_id"}
+    try:
+        user = await db.users.find_one({"user_id": user_id})
+    except Exception:
+        user = MOCK_DB.get(user_id)
+    if not user:
+        return {"error": "User not found"}
+    access_token = user.get("google_access_token")
+    if not access_token:
+        return {"error": "No access token found"}
+    debug_data = {}
+    async with httpx.AsyncClient() as client:
+        t_res = await client.get(f"https://oauth2.googleapis.com/tokeninfo?access_token={access_token}")
+        if t_res.status_code == 200:
+            t_data = t_res.json()
+            debug_data["token_scopes"] = t_data.get("scope", "")
+            debug_data["has_drive_scope"] = "drive.readonly" in t_data.get("scope", "")
+        else:
+            debug_data["token_error"] = f"{t_res.status_code} {t_res.text}"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        m_res = await client.get(
+            f"https://www.googleapis.com/drive/v3/files/{drive_file_id}",
+            headers=headers,
+            params={
+                "fields": "id,name,mimeType,owners(displayName,emailAddress),capabilities,copyRequiresWriterPermission,webViewLink,webContentLink,size",
+                "supportsAllDrives": "true"
+            }
+        )
+        debug_data["metadata_status"] = m_res.status_code
+        if m_res.status_code == 200:
+            debug_data["metadata"] = m_res.json()
+        else:
+            debug_data["metadata_error"] = m_res.text
+    return debug_data
+
+@app.post("/api/materials/extract-content")
+async def extract_drive_content(user_id: str = "", drive_file_id: str = "", mime_type: str = "", material_id: str = ""):
+    """Try to extract text from a Google Drive file using the user's access token."""
+    if not user_id or not drive_file_id:
+        raise HTTPException(status_code=400, detail="user_id and drive_file_id required")
+
+    try:
+        user = await db.users.find_one({"user_id": user_id})
+    except Exception:
+        user = MOCK_DB.get(user_id)
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    access_token = user.get("google_access_token")
+    if not access_token:
+        raise HTTPException(status_code=400, detail="No access token")
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+    extracted = ""
+    status = "extract_failed"
+    error_msg = ""
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        try:
+            m_res = await client.get(
+                f"https://www.googleapis.com/drive/v3/files/{drive_file_id}",
+                headers=headers,
+                params={"fields": "mimeType,capabilities,webContentLink", "supportsAllDrives": "true"}
+            )
+            can_download = True
+            web_content_link = None
+            if m_res.status_code == 403 and "disabled" in m_res.text:
+                return {"success": False, "content": "", "content_status": "extract_failed", "extracted_length": 0, "error": "Google Drive API is disabled in your Google Cloud Console. Please enable it."}
+
+            if m_res.status_code == 200:
+                m_data = m_res.json()
+                can_download = m_data.get("capabilities", {}).get("canDownload", True)
+                web_content_link = m_data.get("webContentLink")
+                if not mime_type or mime_type == "none":
+                    mime_type = m_data.get("mimeType", "")
+            
+            if not can_download:
+                error_msg = "File owner or Workspace policy blocks API download."
+                status = "extract_failed"
+                return {"success": False, "content": "", "content_status": status, "extracted_length": 0, "error": error_msg}
+
+            mime_l = mime_type.lower()
+            res = None
+            # Google Docs → export as plain text
+            if "document" in mime_l and "google" in mime_l:
+                res = await client.get(
+                    f"https://www.googleapis.com/drive/v3/files/{drive_file_id}/export",
+                    headers=headers,
+                    params={"mimeType": "text/plain", "supportsAllDrives": "true"}
+                )
+                if res.status_code == 200:
+                    extracted = res.text.strip()
+                    status = "ready" if extracted else "extract_failed"
+                else:
+                    error_msg = f"Export failed: {res.status_code}"
+
+            # Google Slides → export as plain text
+            elif "presentation" in mime_l and "google" in mime_l:
+                res = await client.get(
+                    f"https://www.googleapis.com/drive/v3/files/{drive_file_id}/export",
+                    headers=headers,
+                    params={"mimeType": "text/plain", "supportsAllDrives": "true"}
+                )
+                if res.status_code == 200:
+                    extracted = res.text.strip()
+                    status = "ready" if extracted else "extract_failed"
+                else:
+                    error_msg = f"Export failed: {res.status_code}"
+
+            # PDF → download and extract with pypdf
+            elif "pdf" in mime_l:
+                res = await client.get(
+                    f"https://www.googleapis.com/drive/v3/files/{drive_file_id}",
+                    headers=headers,
+                    params={"alt": "media", "supportsAllDrives": "true"}
+                )
+                if res.status_code == 403 and web_content_link:
+                    res = await client.get(web_content_link, headers=headers)
+                
+                if res.status_code == 200:
+                    try:
+                        import io
+                        try:
+                            from pypdf import PdfReader
+                        except ImportError:
+                            error_msg = "pypdf not installed. Run pip install -r backend/requirements.txt."
+                            status = "extract_failed"
+                            return {"success": False, "content": "", "content_status": status, "extracted_length": 0, "error": error_msg}
+                        
+                        reader = PdfReader(io.BytesIO(res.content))
+                        pages_text = []
+                        for page in reader.pages:
+                            t = page.extract_text()
+                            if t:
+                                pages_text.append(t.strip())
+                        extracted = "\n\n".join(pages_text)
+                        status = "ready" if extracted else "metadata_only"
+                        if not extracted:
+                            error_msg = "This PDF may be scanned/image-only. Paste text manually."
+                    except Exception as ex:
+                        error_msg = f"PDF parse error: {ex}"
+                else:
+                    error_msg = f"Download failed: {res.status_code}"
+
+            # Plain text file
+            elif "text/plain" in mime_l:
+                res = await client.get(
+                    f"https://www.googleapis.com/drive/v3/files/{drive_file_id}",
+                    headers=headers,
+                    params={"alt": "media", "supportsAllDrives": "true"}
+                )
+                if res.status_code == 200:
+                    extracted = res.text.strip()
+                    status = "ready" if extracted else "extract_failed"
+                else:
+                    error_msg = f"Download failed: {res.status_code}"
+
+            else:
+                error_msg = f"Unsupported file type: {mime_type}. Paste content manually."
+                status = "metadata_only"
+                
+            if res and res.status_code == 403:
+                error_msg = "Browser download works, but Google blocks API download for this file. Upload manually."
+                status = "extract_failed"
+
+        except Exception as ex:
+            error_msg = str(ex)
+
+    updated = False
+    if status == "ready" and material_id:
+        from backend.routers.materials import MATERIALS_DB
+        user_mats = list(MATERIALS_DB.get(user_id, []))
+        for m in user_mats:
+            if m["id"] == material_id:
+                m["content"] = extracted[:50000]
+                m["content_status"] = "ready"
+                m["content_available"] = True
+                m["extracted_text_length"] = len(extracted)
+                updated = True
+                break
+        MATERIALS_DB[user_id] = user_mats
+
+    return {
+        "success": status == "ready",
+        "content": extracted[:50000] if extracted else "",  # Cap at 50k chars
+        "content_status": status,
+        "extracted_length": len(extracted),
+        "material_id": material_id,
+        "updated": updated,
+        "error": error_msg,
+    }
+
+@app.get("/api/classroom/{user_id}/materials/debug")
+async def debug_classroom_materials(user_id: str):
+    """Debug endpoint to count fetched materials by course."""
+    try:
+        user = await db.users.find_one({"user_id": user_id})
+    except Exception:
+        user = MOCK_DB.get(user_id)
+        
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    access_token = user.get("google_access_token")
+    if not access_token:
+        raise HTTPException(status_code=400, detail="Google access token not found.")
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+    
+    async def paginated_get(client, url, key, params=None):
+        items = []
+        next_token = None
+        error_msg = None
+        for _ in range(20):
+            p = dict(params or {})
+            p["pageSize"] = 100
+            if next_token:
+                p["pageToken"] = next_token
+            res = await client.get(url, headers=headers, params=p)
+            if res.status_code != 200:
+                error_msg = f"{res.status_code}: {res.text}"
+                break
+            data = res.json()
+            items.extend(data.get(key, []))
+            next_token = data.get("nextPageToken")
+            if not next_token:
+                break
+        return items, error_msg
+
+    result_counts = []
+    
+    async with httpx.AsyncClient(timeout=60) as client:
+        courses, c_err = await paginated_get(client, "https://classroom.googleapis.com/v1/courses", "courses", {"courseStates": "ACTIVE"})
+        
+        async def fetch_counts(course):
+            cid = course["id"]
+            cname = course.get("name", "Unknown")
+            api_errors = []
+            
+            topics, t_err = await paginated_get(client, f"https://classroom.googleapis.com/v1/courses/{cid}/topics", "topic")
+            if t_err: api_errors.append(f"topics: {t_err}")
+            
+            courseWork, cw_err = await paginated_get(client, f"https://classroom.googleapis.com/v1/courses/{cid}/courseWork", "courseWork")
+            if cw_err: api_errors.append(f"courseWork: {cw_err}")
+            
+            courseWorkMaterials, cwm_err = await paginated_get(client, f"https://classroom.googleapis.com/v1/courses/{cid}/courseWorkMaterials", "courseWorkMaterial")
+            if cwm_err: api_errors.append(f"courseWorkMaterials: {cwm_err}")
+            
+            attachments = 0
+            drive_files = 0
+            pdfs = 0
+            sample_pdfs = []
+            
+            for work in courseWork:
+                for mat in work.get("materials", []):
+                    attachments += 1
+                    if "driveFile" in mat:
+                        drive_files += 1
+                        df = mat["driveFile"].get("driveFile", {})
+                        if "pdf" in df.get("mimeType", "").lower() or df.get("title", "").lower().endswith(".pdf"):
+                            pdfs += 1
+                            if len(sample_pdfs) < 5:
+                                sample_pdfs.append(df.get("title", "Unknown PDF"))
+                            
+            for cwm in courseWorkMaterials:
+                for mat in cwm.get("materials", []):
+                    attachments += 1
+                    if "driveFile" in mat:
+                        drive_files += 1
+                        df = mat["driveFile"].get("driveFile", {})
+                        if "pdf" in df.get("mimeType", "").lower() or df.get("title", "").lower().endswith(".pdf"):
+                            pdfs += 1
+                            if len(sample_pdfs) < 5:
+                                sample_pdfs.append(df.get("title", "Unknown PDF"))
+                            
+            return {
+                "courseId": cid,
+                "courseName": cname,
+                "topics": len(topics),
+                "courseWork": len(courseWork),
+                "courseWorkMaterials": len(courseWorkMaterials),
+                "attachments": attachments,
+                "drive_files": drive_files,
+                "pdfs": pdfs,
+                "sample_pdfs": sample_pdfs,
+                "api_errors": api_errors
+            }
+            
+        if courses:
+            results = await asyncio.gather(*[fetch_counts(c) for c in courses])
+            result_counts = list(results)
+            
+    return {"success": True, "counts": result_counts}
+
+
+
 # --- Focus Mode App Blocker ---
 active_focus_task: asyncio.Task = None
 focus_end_time: datetime = None
@@ -424,25 +897,48 @@ focus_start_time: datetime = None
 active_focus_user: str = None
 
 async def focus_blocker_loop(end_time: datetime, blocked_apps: list[str]):
+    is_windows = platform.system() == "Windows"
     try:
         while datetime.now(timezone.utc) < end_time:
             try:
-                script = 'tell application "System Events" to get name of every application process whose background only is false'
-                proc = await asyncio.create_subprocess_exec(
-                    "osascript", "-e", script,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
-                stdout, _ = await proc.communicate()
-                if proc.returncode == 0:
-                    running_apps = stdout.decode().strip().split(", ")
-                    for app in blocked_apps:
-                        if app in running_apps:
-                            print(f"[Focus] Quitting blocked app: {app}")
-                            quit_proc = await asyncio.create_subprocess_exec(
-                                "osascript", "-e", f'tell application "{app}" to quit'
-                            )
-                            await quit_proc.communicate()
+                if is_windows:
+                    proc = await asyncio.create_subprocess_exec(
+                        "powershell", "-Command", "Get-Process | Where-Object MainWindowTitle | Select-Object -ExpandProperty Name",
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    stdout, _ = await proc.communicate()
+                    if proc.returncode == 0:
+                        running_apps = [name.strip() for name in stdout.decode().split('\n') if name.strip()]
+                        for app in blocked_apps:
+                            for r_app in running_apps:
+                                if app.lower() in r_app.lower():
+                                    print(f"[Focus] Quitting blocked app: {r_app}")
+                                    quit_proc = await asyncio.create_subprocess_exec(
+                                        "taskkill", "/IM", f"{r_app}.exe", "/F",
+                                        stdout=asyncio.subprocess.PIPE,
+                                        stderr=asyncio.subprocess.PIPE
+                                    )
+                                    await quit_proc.communicate()
+                else:
+                    script = 'tell application "System Events" to get name of every application process whose background only is false'
+                    proc = await asyncio.create_subprocess_exec(
+                        "osascript", "-e", script,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    stdout, _ = await proc.communicate()
+                    if proc.returncode == 0:
+                        running_apps = stdout.decode().strip().split(", ")
+                        for app in blocked_apps:
+                            if app in running_apps:
+                                print(f"[Focus] Quitting blocked app: {app}")
+                                quit_proc = await asyncio.create_subprocess_exec(
+                                    "osascript", "-e", f'tell application "{app}" to quit',
+                                    stdout=asyncio.subprocess.PIPE,
+                                    stderr=asyncio.subprocess.PIPE
+                                )
+                                await quit_proc.communicate()
             except Exception as e:
                 print(f"[Focus] Blocker loop error: {e}")
             

@@ -22,7 +22,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
 
-const API_BASE = "http://localhost:8000";
+import { API_BASE } from "@/services/api";
 
 // ── Animated background orbs ─────────────────────────────────────────────────
 const orbs = [
@@ -63,7 +63,7 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    queueMicrotask(() => setMounted(true));
     const existing = localStorage.getItem("lifeos_user_id");
     if (!existing) return;
 

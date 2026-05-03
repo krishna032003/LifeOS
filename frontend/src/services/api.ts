@@ -1,3 +1,5 @@
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+
 export interface StreamCallbacks {
     onPipelineLog?: (node: string, message: string) => void;
     onStateUpdate?: (focus: number, intent: string) => void;
@@ -8,7 +10,7 @@ export interface StreamCallbacks {
 
 export async function streamAgentChat(userId: string, message: string, commandType: string | undefined, callbacks: StreamCallbacks) {
     try {
-        const response = await fetch("http://localhost:8000/api/chat", {
+        const response = await fetch(`${API_BASE}/api/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ user_id: userId, message: message, command_type: commandType || "" }),
@@ -57,7 +59,7 @@ export async function streamAgentChat(userId: string, message: string, commandTy
                             callbacks.onError(data.error || "Unknown stream error");
                         }
                     } catch (e) {
-                        console.error("Failed to parse SSE chunk", dataStr);
+                        console.error("Failed to parse SSE chunk", dataStr, e);
                     }
                 }
             }
@@ -65,7 +67,7 @@ export async function streamAgentChat(userId: string, message: string, commandTy
 
         if (callbacks.onDone) callbacks.onDone();
 
-    } catch (error: any) {
-        if (callbacks.onError) callbacks.onError(error.message);
+    } catch (error) {
+        if (callbacks.onError) callbacks.onError(error instanceof Error ? error.message : "Unknown error");
     }
 }

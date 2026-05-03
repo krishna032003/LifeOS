@@ -5,13 +5,17 @@
 ! .env.example
 
 # Python / Backend
-backend/__pycache__/
+__pycache__/
+**/__pycache__/
+*.pyc
+**/*.pyc
 backend/*.py[cod]
 backend/*$py.class
 backend/.venv/
 backend/venv/
 backend/env/
 backend/*.log
+backend/mock_db.json
 
 # Node / Frontend (frontend/.gitignore already exists but adding just in case)
 frontend/node_modules/

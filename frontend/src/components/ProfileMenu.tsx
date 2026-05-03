@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 /**
@@ -20,7 +21,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 
-const API_BASE = "http://localhost:8000";
+import { API_BASE } from "@/services/api";
 
 interface UserProfile {
   user_id: string;
@@ -84,7 +85,10 @@ export default function ProfileMenu() {
   /* ── Load profile ── */
   useEffect(() => {
     const userId = localStorage.getItem("lifeos_user_id");
-    if (!userId) { setLoading(false); return; }
+    if (!userId) {
+      queueMicrotask(() => setLoading(false));
+      return;
+    }
 
     fetch(`${API_BASE}/api/user/${encodeURIComponent(userId)}`)
       .then((r) => r.ok ? r.json() : null)

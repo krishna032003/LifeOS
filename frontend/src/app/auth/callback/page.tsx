@@ -32,14 +32,14 @@ export default function AuthCallback() {
       const error = params.get("error");
 
       if (error) {
-        setStatus(`Sign-in cancelled: ${error}`);
+        queueMicrotask(() => setStatus(`Sign-in cancelled: ${error}`));
         window.opener?.postMessage({ type: "GOOGLE_AUTH_ERROR", error }, window.location.origin);
         setTimeout(() => window.close(), 1500);
         return;
       }
 
       if (!idToken && !accessToken) {
-        setStatus("No token received from Google.");
+        queueMicrotask(() => setStatus("No token received from Google."));
         window.opener?.postMessage(
           { type: "GOOGLE_AUTH_ERROR", error: "No token in callback URL" },
           window.location.origin
@@ -48,14 +48,14 @@ export default function AuthCallback() {
         return;
       }
 
-      setStatus("Authenticated! Closing…");
+      queueMicrotask(() => setStatus("Authenticated! Closing…"));
       window.opener?.postMessage(
         { type: "GOOGLE_AUTH_SUCCESS", idToken, accessToken },
         window.location.origin
       );
       window.close();
     } catch {
-      setStatus("Something went wrong. Please close this window and try again.");
+      queueMicrotask(() => setStatus("Something went wrong. Please close this window and try again."));
     }
   }, []);
 
